@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 
 const mongoose = require('mongoose');
 mongoose.connect('mongodb://127.0.0.1/blog', { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.set('strictQuery', false);
 
 const postsRouter = require("./routes/Posts");
 const usersRouter = require("./routes/Users");

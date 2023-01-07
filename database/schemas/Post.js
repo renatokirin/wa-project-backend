@@ -50,13 +50,13 @@ const PostSchema = new mongoose.Schema({
     }
 });
 
-/*
+
 PostSchema.pre('validate', function (next) {
     if (this.markdown) {
         this.html = marked.parse(this.markdown);
     }
     next();
 });
-*/
+
 
 module.exports = mongoose.model('Post', PostSchema);
