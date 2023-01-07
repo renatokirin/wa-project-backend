@@ -67,7 +67,9 @@ router.patch('/auth/signIn', async (req, res) => {
 
 router.patch('/auth/signOut', async (req, res) => {
     let user = await User.findOne({ email: req.cookies.email });
-    if (checkAuthenticated(req.cookies.token, req.cookies.email)) {
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+    
+    if (authResult.isAuthenticated) {
         user.authToken = uuidv4();
     }
 
