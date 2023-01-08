@@ -68,7 +68,7 @@ router.patch('/auth/signIn', async (req, res) => {
 router.patch('/auth/signOut', async (req, res) => {
     let user = await User.findOne({ email: req.cookies.email });
     let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
-    
+
     if (authResult.isAuthenticated) {
         user.authToken = uuidv4();
     }
@@ -87,6 +87,47 @@ router.patch('/auth/signOut', async (req, res) => {
             path: '/'
         })
         .sendStatus(200);
+});
+
+
+router.post('/bookmarks/:postId', async (req, res) => {
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
+    if (authResult.isAuthenticated) {
+        let bookmarked = await User.findOne({
+            _id: authResult.user._id,
+            bookmarks: req.params.postId
+        });
+
+        if (!bookmarked) {
+            let user = authResult.user;
+            user.bookmarks.push(req.params.postId);
+            await user.save().then(result => { return res.sendStatus(201) })
+                .catch(err => { return res.send(500).json({ "error": err }) });
+        } else {
+            return res.sendStatus(406);
+        }
+    }
+});
+
+router.delete('/bookmarks/:postId', async (req, res) => {
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
+    if (authResult.isAuthenticated) {
+        let bookmarked = await User.findOne({
+            _id: authResult.user._id,
+            bookmarks: req.params.postId
+        });
+
+        if (bookmarked) {
+            let user = authResult.user;
+            user.bookmarks.pull(req.params.postId);
+            await user.save().then(result => { return res.sendStatus(200) })
+                .catch(err => { return res.send(500).json({ "error": err }) });
+        } else {
+            return res.sendStatus(404);
+        }
+    }
 });
 
 
