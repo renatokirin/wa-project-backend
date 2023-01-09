@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('./../database/schemas/User');
+const Follower = require('./../database/schemas/Follower');
 const checkAuthenticated = require('./../auth/checkAuthenticated');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
@@ -183,5 +184,50 @@ router.delete('/bookmarks/:postId', async (req, res) => {
     }
 });
 
+
+router.post('/follows/:userId', async (req, res) => {
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
+    if (authResult.isAuthenticated) {
+        let followed = await Follower.findOne({ followerId: authResult.user._id, followedId: req.params.userId });
+
+        if (!followed) {
+            let follower = new Follower();
+            follower.followerId = authResult.user._id;
+            follower.followedId = req.params.userId;
+            await follower.save();
+            return res.sendStatus(201);
+        } else {
+            return res.sendStatus(406);
+        }
+    }
+});
+
+router.delete('/follows/:userId', async (req, res) => {
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
+    if (authResult.isAuthenticated) {
+        let followed = await Follower.findOne({ followerId: authResult.user._id, followedId: req.params.userId });
+
+        if (followed) {
+            await followed.delete();
+            return res.sendStatus(201);  
+        } else {
+            return res.sendStatus(404);
+        }
+    }
+});
+
+router.get('/:id/follows', async (req, res) => {
+    let follows = await Follower.find({ followerId: req.params.id });
+    
+    return res.status(200).json(follows);
+});
+
+router.get('/:id/followers', async (req, res) => {
+    let followedBy = await Follower.find({ followedId: req.params.id });
+
+    return res.status(200).json(followedBy);
+});
 
 module.exports = router;
