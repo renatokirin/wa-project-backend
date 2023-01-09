@@ -4,6 +4,8 @@ const User = require('./../database/schemas/User');
 const checkAuthenticated = require('./../auth/checkAuthenticated');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
+const multer = require('multer');
+const fs = require("fs");
 
 function allowedCharacters(str) {
     return Boolean(str.match(/^[A-Za-z0-9]*$/));
@@ -61,6 +63,56 @@ router.patch('/auth/signIn', async (req, res) => {
     } else {
         // 401 Unauthorized
         return res.status(401).json({ "authenticated": false })
+    }
+});
+
+router.patch('/edit', async (req, res) => {
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
+    if (authResult.isAuthenticated) {
+        let user = authResult.user;
+
+        if (req.body.about) {
+            user.about = req.body.about;
+        }
+
+        if (req.body.name) {
+            const Storage = multer.diskStorage({
+                destination: 'temp',
+                filename: (req, file, cb) => {
+                    cb(null, file.originalname)
+                }
+            });
+
+            const upload = multer({ storage: Storage }).single('profilepicture');
+
+            upload(req, res, (err) => {
+                if (err) {
+                    console.log(err);
+                } else {
+                    const image = {
+                        name: req.body.name,
+                        image: {
+                            data: fs.readFileSync("temp/" + req.file.filename),
+                            contentType: 'image/png'
+                        }
+                    };
+                    user.profilePicture = image;
+
+                    fs.unlink("temp/" + req.file.filename, (err) => {
+                        if (err) throw err;
+                        console.log('file deleted');
+                    });
+                }
+            });
+        }
+
+        setTimeout(() => {
+            user.save().then(result => console.log("saved")).catch(err => console.log(err));
+        }, 500);
+        res.sendStatus(200);
+    } else {
+        return res.sendStatus(401);
     }
 });
 

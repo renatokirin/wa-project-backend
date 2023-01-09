@@ -21,7 +21,13 @@ const UserSchema = new mongoose.Schema({
         default: new Date()
     },
     profilePicture: {
-        type: mongoose.SchemaTypes.String
+        name: {
+            type: mongoose.SchemaTypes.String,
+        },
+        image: {
+            data: mongoose.SchemaTypes.Buffer,
+            contentType: mongoose.SchemaTypes.String
+        }
     },
     bookmarks: {
         type: mongoose.SchemaTypes.Array,

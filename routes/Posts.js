@@ -124,6 +124,22 @@ router.patch('/:id', async (req, res) => { // changing topics isn't currently su
 
 });
 
+router.delete('/:id', async (req, res) => {
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
+    if (authResult.isAuthenticated) {
+        let selectedPost = await Post.findOne({ _id: req.params.id, "author.id": authResult.user._id });
+
+        if (selectedPost) {
+            selectedPost.removed = true;
+            await selectedPost.save();
+            return res.sendStatus(200);
+        } else {
+            return res.sendStatus(404);
+        }
+    }
+});
+
 
 
 router.post('/:id/likes', async (req, res) => {
