@@ -47,7 +47,8 @@ const PostSchema = new mongoose.Schema({
     removed: {
         type: mongoose.SchemaTypes.Boolean,
         default: false
-    }
+    },
+    userData: {}
 });
 
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('./../database/schemas/Post');
+const User = require('./../database/schemas/User');
 const Topic = require('./../database/schemas/Topic');
 const Like = require('./../database/schemas/Like');
 const checkAuthenticated = require('./../auth/checkAuthenticated');
@@ -51,8 +52,35 @@ router.post('/', async (req, res) => {
     }
 });
 
+async function getUserData(postId, userId) {
+
+    let bookmarked;
+    let liked;
+
+    bookmarked = await User.findOne({
+        _id: userId,
+        bookmarks: postId.toString()
+    });
+    liked = await Like.findOne({
+        postId: postId.toString(),
+        userId: userId
+    });
+
+    let bookmarkedBool = bookmarked ? true : false;
+    let likedBool = liked ? true : false;
+
+    return {
+        "bookmarked": bookmarkedBool,
+        "liked": likedBool
+    };
+
+}
+
+
 // http://localhost:3000/api/posts?page=1&limit=10          optional &topic=cooking
 router.get('/', async (req, res) => {
+
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
 
     let topicQuery = {};
 
@@ -60,13 +88,13 @@ router.get('/', async (req, res) => {
         topicQuery = { "topic.name": req.query.topic }
     }
 
+    let posts = [];
+
     await Post.find(topicQuery).sort({ createdAt: -1 })
         .limit(req.query.limit * 1)
         .skip((req.query.page - 1) * req.query.limit)
         .exec()
         .then(result => {
-
-            let posts = [];
             result.forEach(post => {
                 if (!post.removed) {
                     posts.push({
@@ -81,22 +109,36 @@ router.get('/', async (req, res) => {
                     });
                 }
             });
-
-            return res.status(200).json(posts);
         }).catch(err => {
             return res.status(500).json({ "error": err });
         });
 
+    if (authResult.isAuthenticated) {
+        for (let i = 0; i < posts.length; i++) {
+            posts[i].userData = await getUserData(posts[i]._id, authResult.user._id);
+        }
+    }
+
+    return res.status(200).json(posts);
 });
 
 router.get('/:id', async (req, res) => {
+    let post;
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
     await Post.findOne({ _id: req.params.id }).then(result => {
         if (!result.removed) {
-            return res.status(200).json(result);
+            post = result;
         } else {
             return res.sendStatus(404);
         }
     }).catch(err => res.status(500).json({ "error": err }));
+
+    if (authResult.isAuthenticated) {
+        post.userData = await getUserData(post._id, authResult.user._id);
+    }
+
+    return res.status(200).json(post);
 });
 
 router.patch('/:id', async (req, res) => { // changing topics isn't currently supported
