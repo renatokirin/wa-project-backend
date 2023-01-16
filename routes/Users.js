@@ -48,6 +48,7 @@ router.post('/auth/signUp', async (req, res) => {
 
 router.patch('/auth/signIn', async (req, res) => {
     let user = await User.findOne({ email: req.body.email });
+    if (!user) return res.status(401).json({ "authenticated": false });
 
     if (await bcrypt.compare(req.body.password, user.password)) {
         user.authToken = uuidv4();
@@ -63,7 +64,7 @@ router.patch('/auth/signIn', async (req, res) => {
         });
     } else {
         // 401 Unauthorized
-        return res.status(401).json({ "authenticated": false })
+        return res.status(401).json({ "authenticated": false });
     }
 });
 
