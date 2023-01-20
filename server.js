@@ -9,6 +9,7 @@ mongoose.set('strictQuery', false);
 
 const postsRouter = require("./routes/Posts");
 const usersRouter = require("./routes/Users");
+const topicsRouter = require("./routes/Topics");
 
 const app = express();
 const port = 3000;
@@ -25,5 +26,6 @@ app.use(bodyParser.json());
 
 app.use('/api/posts', postsRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/topics', topicsRouter);
 
 app.listen(port, () => console.log(`Running on port ${port}`));

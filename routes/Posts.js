@@ -237,10 +237,7 @@ router.delete('/:id/likes', async (req, res) => {
 
 });
 
-router.get('/topics', async (req, res) => {
-    let topics = await Topic.find({ "name": { $regex: req.query.name } });
-    res.status(200).json(topics);
-});
+
 
 
 module.exports = router;
