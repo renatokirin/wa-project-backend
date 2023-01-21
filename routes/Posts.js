@@ -90,6 +90,8 @@ router.get('/', async (req, res) => {
 
     let posts = [];
 
+    const count = await Post.count();
+
     await Post.find(topicQuery).sort({ createdAt: -1 })
         .limit(req.query.limit * 1)
         .skip((req.query.page - 1) * req.query.limit)
@@ -119,7 +121,10 @@ router.get('/', async (req, res) => {
         }
     }
 
-    return res.status(200).json(posts);
+    return res.status(200).json({
+        posts,
+        totalPages: Math.ceil(count / req.query.limit)
+    });
 });
 
 router.get('/:id', async (req, res) => {
