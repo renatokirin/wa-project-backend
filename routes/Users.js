@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const User = require('./../database/schemas/User');
+const Post = require('./../database/schemas/Post');
 const Follower = require('./../database/schemas/Follower');
 const checkAuthenticated = require('./../auth/checkAuthenticated');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
 const fs = require("fs");
+const getUserData = require('./../utils/getUserData.js');
 
 function allowedCharacters(str) {
     return Boolean(str.match(/^[A-Za-z0-9]*$/));
@@ -212,7 +214,7 @@ router.delete('/follows/:userId', async (req, res) => {
 
         if (followed) {
             await followed.delete();
-            return res.sendStatus(201);  
+            return res.sendStatus(201);
         } else {
             return res.sendStatus(404);
         }
@@ -222,13 +224,117 @@ router.delete('/follows/:userId', async (req, res) => {
 router.get('/:id/follows', async (req, res) => {
     let follows = await Follower.find({ followerId: req.params.id });
     
-    return res.status(200).json(follows);
+    let ids = [];
+    follows.forEach(item => ids.push(item.followedId));
+
+    let users = await User.find({ _id: { $in: ids } });
+    let followed = [];
+    users.map(user => followed.push({
+        _id: user._id,
+        username: user.username,
+        profilePicture: user.profilePicture
+    }));
+
+    return res.status(200).json(followed);
 });
 
 router.get('/:id/followers', async (req, res) => {
     let followedBy = await Follower.find({ followedId: req.params.id });
 
-    return res.status(200).json(followedBy);
+    let ids = [];
+    followedBy.forEach(item => ids.push(item.followerId));
+
+    let users = await User.find({ _id: { $in: ids } });
+    let followers = [];
+    users.map(user => followers.push({
+        _id: user._id,
+        username: user.username,
+        profilePicture: user.profilePicture
+    }));
+
+    return res.status(200).json(followers);
+});
+
+router.get('/:id', async (req, res) => {
+
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
+    let user;
+
+    try {
+        user = await User.findOne({ _id: req.params.id });
+    } catch (e) { return res.sendStatus(406) };
+
+    if (!user) return res.sendStatus(404);
+
+    let userInfo = {
+        username: user.username,
+        signUpDate: user.signUpDate,
+        profilePicture: user.profilePicture,
+        about: user.about
+    };
+
+    if (authResult.isAuthenticated) {
+        const isFollowed = await Follower.findOne({
+            followerId: authResult.user._id,
+            followedId: user._id
+        });
+
+        if (isFollowed) userInfo.isFollowed = true;
+        else userInfo.isFollowed = false;
+    }
+
+    let query = { "author.id": user._id };
+
+    if (req.query.topic) {
+        query = { "author.id": user._id, "topic.name": req.query.topic }
+    }
+
+    let posts = [];
+
+    const count = await Post.count({ "author.id": user._id, "removed": false });
+
+
+    await Post.find(query).sort({ createdAt: -1 })
+        .limit(req.query.limit * 1)
+        .skip((req.query.page - 1) * req.query.limit)
+        .exec()
+        .then(result => {
+            result.forEach(post => {
+                if (!post.removed) {
+                    posts.push({
+                        "author": post.author,
+                        "topic": post.topic,
+                        "_id": post._id,
+                        "createdAt": post.createdAt,
+                        "lastEdit": post.lastEdit,
+                        "likes": post.likes,
+                        "title": post.title,
+                        "description": post.description
+                    });
+                }
+            });
+        }).catch(err => {
+            return res.status(500).json({ "error": err });
+        });
+
+    if (authResult.isAuthenticated) {
+        for (let i = 0; i < posts.length; i++) {
+            posts[i].userData = await getUserData(posts[i]._id, authResult.user._id);
+        }
+    }
+
+    const followers = await Follower.count({ followedId: user._id });
+    const following = await Follower.count({ followerId: user._id });
+
+    return res.status(200).json({
+        userInfo,
+        followers,
+        following,
+        posts,
+        totalPages: Math.ceil(count / req.query.limit),
+        count
+    });
 });
 
 module.exports = router;

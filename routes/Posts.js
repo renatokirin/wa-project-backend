@@ -5,6 +5,7 @@ const User = require('./../database/schemas/User');
 const Topic = require('./../database/schemas/Topic');
 const Like = require('./../database/schemas/Like');
 const checkAuthenticated = require('./../auth/checkAuthenticated');
+const getUserData = require('./../utils/getUserData.js');
 
 router.post('/', async (req, res) => {
 
@@ -52,29 +53,6 @@ router.post('/', async (req, res) => {
     }
 });
 
-async function getUserData(postId, userId) {
-
-    let bookmarked;
-    let liked;
-
-    bookmarked = await User.findOne({
-        _id: userId,
-        bookmarks: postId.toString()
-    });
-    liked = await Like.findOne({
-        postId: postId.toString(),
-        userId: userId
-    });
-
-    let bookmarkedBool = bookmarked ? true : false;
-    let likedBool = liked ? true : false;
-
-    return {
-        "bookmarked": bookmarkedBool,
-        "liked": likedBool
-    };
-
-}
 
 
 // http://localhost:3000/api/posts?page=1&limit=10          optional &topic=cooking
@@ -90,7 +68,7 @@ router.get('/', async (req, res) => {
 
     let posts = [];
 
-    const count = await Post.count();
+    const count = await Post.count({"removed": false });
 
     await Post.find(topicQuery).sort({ createdAt: -1 })
         .limit(req.query.limit * 1)
