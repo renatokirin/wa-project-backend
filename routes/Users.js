@@ -146,6 +146,40 @@ router.patch('/auth/signOut', async (req, res) => {
         .sendStatus(200);
 });
 
+router.get('/bookmarks', async (req, res) => {
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
+    if (authResult.isAuthenticated) {
+        let bookmarkedPosts = [];
+        let ids = authResult.user.bookmarks;
+        await Post.find({ _id: {$in : ids} }).then(result => {
+            result.forEach(post => {
+                if (!post.removed) {
+                    bookmarkedPosts.push({
+                        "author": post.author,
+                        "topic": post.topic,
+                        "_id": post._id,
+                        "createdAt": post.createdAt,
+                        "lastEdit": post.lastEdit,
+                        "likes": post.likes,
+                        "title": post.title,
+                        "description": post.description
+                    });
+                }
+            });
+        }).catch(err => {
+            return res.status(500).json({ "error": err });
+        });;
+
+        for (let i = 0; i < bookmarkedPosts.length; i++) {
+            bookmarkedPosts[i].userData = await getUserData(bookmarkedPosts[i]._id, authResult.user._id);
+        }
+
+        return res.status(200).json(bookmarkedPosts);
+    } else {
+        return res.sendStatus(401);
+    }
+});
 
 router.post('/bookmarks/:postId', async (req, res) => {
     let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
@@ -160,7 +194,7 @@ router.post('/bookmarks/:postId', async (req, res) => {
             let user = authResult.user;
             user.bookmarks.push(req.params.postId);
             await user.save().then(result => { return res.sendStatus(201) })
-                .catch(err => { return res.send(500).json({ "error": err }) });
+                .catch(err => { return res.status(500).json({ "error": err }) });
         } else {
             return res.sendStatus(406);
         }
@@ -180,7 +214,7 @@ router.delete('/bookmarks/:postId', async (req, res) => {
             let user = authResult.user;
             user.bookmarks.pull(req.params.postId);
             await user.save().then(result => { return res.sendStatus(200) })
-                .catch(err => { return res.send(500).json({ "error": err }) });
+                .catch(err => { return res.status(500).json({ "error": err }) });
         } else {
             return res.sendStatus(404);
         }
@@ -223,7 +257,7 @@ router.delete('/follows/:userId', async (req, res) => {
 
 router.get('/:id/follows', async (req, res) => {
     let follows = await Follower.find({ followerId: req.params.id });
-    
+
     let ids = [];
     follows.forEach(item => ids.push(item.followedId));
 
