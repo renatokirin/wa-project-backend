@@ -20,6 +20,8 @@ router.post('/', async (req, res) => {
         post.description = req.body.description;
         post.markdown = req.body.markdown;
 
+        if (!post.title || !post.description || !post.markdown) return res.sendStatus(406);
+
         // Topic assignment
         let topicWithSameName = await Topic.find({ "name": (req.body.topicName).toLowerCase() }).catch(err => {
             return res.status(500).json({ "error": err });
