@@ -152,7 +152,7 @@ router.get('/bookmarks', async (req, res) => {
     if (authResult.isAuthenticated) {
         let bookmarkedPosts = [];
         let ids = authResult.user.bookmarks;
-        await Post.find({ _id: {$in : ids} }).then(result => {
+        await Post.find({ _id: {$in : ids} }).sort({ createdAt: -1 }).then(result => {
             result.forEach(post => {
                 if (!post.removed) {
                     bookmarkedPosts.push({

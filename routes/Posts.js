@@ -20,7 +20,10 @@ router.post('/', async (req, res) => {
         post.description = req.body.description;
         post.markdown = req.body.markdown;
 
-        if (!post.title || !post.description || !post.markdown) return res.sendStatus(406);
+        if (!req.body.topicName) return res.status(406).json({ "error": "Missing topic" });
+        if (!post.title) return res.status(406).json({ "error": "Missing title" });
+        if (!post.description) return res.status(406).json({ "error": "Missing description" });
+        if (!post.markdown) return res.status(406).json({ "error": "Missing markdown" });
 
         // Topic assignment
         let topicWithSameName = await Topic.find({ "name": (req.body.topicName).toLowerCase() }).catch(err => {
@@ -43,6 +46,9 @@ router.post('/', async (req, res) => {
         // Author assignment
         post.author.id = authResult.user._id;
         post.author.username = authResult.user.username;
+
+        // Date assignment
+        post.createdAt = new Date();
 
         await post.save().then(result => {
             return res.status(201).json({ "id": post._id });
