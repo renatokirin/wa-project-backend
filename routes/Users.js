@@ -60,6 +60,7 @@ router.patch('/auth/signIn', async (req, res) => {
                 .cookie("token", user.authToken)
                 .cookie("email", user.email)
                 .cookie("username", user.username)
+                .cookie("id", user._id)
                 .status(200).json({ "authenticated": true });
         }).catch(err => {
             return res.status(500).json({ "authenticated": false, "error": err });
@@ -67,56 +68,6 @@ router.patch('/auth/signIn', async (req, res) => {
     } else {
         // 401 Unauthorized
         return res.status(401).json({ "authenticated": false });
-    }
-});
-
-router.patch('/edit', async (req, res) => {
-    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
-
-    if (authResult.isAuthenticated) {
-        let user = authResult.user;
-
-        if (req.body.about) {
-            user.about = req.body.about;
-        }
-
-        if (req.body.name) {
-            const Storage = multer.diskStorage({
-                destination: 'temp',
-                filename: (req, file, cb) => {
-                    cb(null, file.originalname)
-                }
-            });
-
-            const upload = multer({ storage: Storage }).single('profilepicture');
-
-            upload(req, res, (err) => {
-                if (err) {
-                    console.log(err);
-                } else {
-                    const image = {
-                        name: req.body.name,
-                        image: {
-                            data: fs.readFileSync("temp/" + req.file.filename),
-                            contentType: 'image/png'
-                        }
-                    };
-                    user.profilePicture = image;
-
-                    fs.unlink("temp/" + req.file.filename, (err) => {
-                        if (err) throw err;
-                        console.log('file deleted');
-                    });
-                }
-            });
-        }
-
-        setTimeout(() => {
-            user.save().then(result => console.log("saved")).catch(err => console.log(err));
-        }, 500);
-        res.sendStatus(200);
-    } else {
-        return res.sendStatus(401);
     }
 });
 
@@ -143,6 +94,10 @@ router.patch('/auth/signOut', async (req, res) => {
             domain: 'localhost',
             path: '/'
         })
+        .clearCookie('id', {
+            domain: 'localhost',
+            path: '/'
+        })
         .sendStatus(200);
 });
 
@@ -152,7 +107,7 @@ router.get('/bookmarks', async (req, res) => {
     if (authResult.isAuthenticated) {
         let bookmarkedPosts = [];
         let ids = authResult.user.bookmarks;
-        await Post.find({ _id: {$in : ids} }).sort({ createdAt: -1 }).then(result => {
+        await Post.find({ _id: { $in: ids } }).sort({ createdAt: -1 }).then(result => {
             result.forEach(post => {
                 if (!post.removed) {
                     bookmarkedPosts.push({
@@ -256,7 +211,11 @@ router.delete('/follows/:userId', async (req, res) => {
 });
 
 router.get('/:id/follows', async (req, res) => {
-    let follows = await Follower.find({ followerId: req.params.id });
+    let follows;
+    try {
+        follows = await Follower.find({ followerId: req.params.id });
+    } catch (e) { return res.sendStatus(406) };
+    if (!follows) return res.sendStatus(406);
 
     let ids = [];
     follows.forEach(item => ids.push(item.followedId));
@@ -273,7 +232,11 @@ router.get('/:id/follows', async (req, res) => {
 });
 
 router.get('/:id/followers', async (req, res) => {
-    let followedBy = await Follower.find({ followedId: req.params.id });
+    let followedBy;
+    try {
+        followedBy = await Follower.find({ followedId: req.params.id });
+    } catch (e) { return res.sendStatus(406) };
+    if (!followedBy) return res.sendStatus(406);
 
     let ids = [];
     followedBy.forEach(item => ids.push(item.followerId));
@@ -318,10 +281,10 @@ router.get('/:id', async (req, res) => {
         else userInfo.isFollowed = false;
     }
 
-    let query = { "author.id": user._id };
+    let query = { "author.id": user._id, "removed": false };
 
     if (req.query.topic) {
-        query = { "author.id": user._id, "topic.name": req.query.topic }
+        query = { "author.id": user._id, "topic.name": req.query.topic, "removed": false }
     }
 
     let posts = [];

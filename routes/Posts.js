@@ -63,22 +63,21 @@ router.post('/', async (req, res) => {
 
 
 
-// http://localhost:3000/api/posts?page=1&limit=10          optional &topic=cooking
 router.get('/', async (req, res) => {
 
     let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
 
-    let topicQuery = {};
+    let query = { "removed": false };
 
     if (req.query.topic) {
-        topicQuery = { "topic.name": req.query.topic }
+        query = { "topic.name": req.query.topic, "removed": false }
     }
 
     let posts = [];
 
-    const count = await Post.count({"removed": false });
+    const count = await Post.count({ "removed": false });
 
-    await Post.find(topicQuery).sort({ createdAt: -1 })
+    await Post.find(query).sort({ createdAt: -1 })
         .limit(req.query.limit * 1)
         .skip((req.query.page - 1) * req.query.limit)
         .exec()
@@ -123,16 +122,16 @@ router.get('/:id', async (req, res) => {
         } else {
             return res.sendStatus(404);
         }
-    }).catch(err => res.status(500).json({ "error": err }));
+    }).catch(err => res.status(404).json({ "error": err }));
 
-    if (authResult.isAuthenticated) {
+    if (authResult.isAuthenticated && post) {
         post.userData = await getUserData(post._id, authResult.user._id);
     }
 
     return res.status(200).json(post);
 });
 
-router.patch('/:id', async (req, res) => { // changing topics isn't currently supported
+router.patch('/:id', async (req, res) => {
 
     let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
 
@@ -147,8 +146,11 @@ router.patch('/:id', async (req, res) => { // changing topics isn't currently su
             selectedPost.markdown = req.body.markdown;
 
             selectedPost.lastEdit = new Date();
-            await selectedPost.save();
-            return res.sendStatus(200);
+            await selectedPost.save().then(result => {
+                return res.status(200).json({ "id": selectedPost._id });
+            }).catch(err => {
+                return res.status(500).json({ "error": err });
+            });
         } else {
             return res.sendStatus(404);
         }
@@ -165,8 +167,8 @@ router.delete('/:id', async (req, res) => {
 
         if (selectedPost) {
             selectedPost.removed = true;
-            await selectedPost.save();
-            return res.sendStatus(200);
+            await selectedPost.save().catch(err => res.status(500).json({ "deleted": false }));
+            return res.status(200).json({ "deleted": true });
         } else {
             return res.sendStatus(404);
         }
@@ -177,7 +179,6 @@ router.delete('/:id', async (req, res) => {
 
 router.post('/:id/likes', async (req, res) => {
     let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
-    console.log(req.params.id);
 
     if (authResult.isAuthenticated) {
         let post = await Post.findOne({ _id: req.params.id });
