@@ -334,4 +334,22 @@ router.get('/:id', async (req, res) => {
     });
 });
 
+router.patch('/edit', async (req, res) => {
+    let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
+
+    if (authResult.isAuthenticated) {
+        let user = authResult.user;
+
+        if (req.body.about) {
+            user.about = req.body.about;
+        }
+
+        user.save().then(result => {
+            return res.sendStatus(200);
+        }).catch(err => { return res.sendStatus(500) });
+    } else {
+        return res.sendStatus(401);
+    }
+});
+
 module.exports = router;
