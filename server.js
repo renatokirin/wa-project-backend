@@ -2,9 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
+require('dotenv').config();
 
 const mongoose = require('mongoose');
-mongoose.connect('mongodb://127.0.0.1/blog', { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(process.env.DB_URI, { useNewUrlParser: true, useUnifiedTopology: true }); // 'mongodb://127.0.0.1/blog'
 mongoose.set('strictQuery', false);
 
 const postsRouter = require("./routes/Posts");
@@ -13,7 +14,7 @@ const topicsRouter = require("./routes/Topics");
 const imageUploadRouter = require("./routes/ImageUpload");
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 
 app.use(cors({

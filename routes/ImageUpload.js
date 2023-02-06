@@ -22,6 +22,11 @@ router.patch('/editProfilePicture', async (req, res) => {
         let user = authResult.user;
 
         upload(req, res, (err) => {
+
+            try {
+                console.log(req.file.filename);
+            } catch (e) { return res.sendStatus(406); }
+
             if (err) {
                 console.log(err);
             } else {
@@ -35,6 +40,7 @@ router.patch('/editProfilePicture', async (req, res) => {
                             }
                         };
                         user.profilePicture = image;
+                        user.save().then(result => res.sendStatus(200)).catch(err => console.log(err));
 
                         fs.unlink("temp/" + req.file.filename, (err) => {
                             if (err) console.log(err);
@@ -43,10 +49,6 @@ router.patch('/editProfilePicture', async (req, res) => {
             }
         });
 
-        setTimeout(() => {
-            user.save().then(result => console.log("picture saved")).catch(err => console.log(err));
-            res.sendStatus(200);
-        }, 500);
     } else {
         return res.sendStatus(401);
     }

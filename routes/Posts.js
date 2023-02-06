@@ -155,6 +155,8 @@ router.patch('/:id', async (req, res) => {
             return res.sendStatus(404);
         }
 
+    } else {
+        return res.sendStatus(401);
     }
 
 });
@@ -172,6 +174,8 @@ router.delete('/:id', async (req, res) => {
         } else {
             return res.sendStatus(404);
         }
+    } else {
+        return res.sendStatus(401);
     }
 });
 
@@ -225,6 +229,8 @@ router.delete('/:id/likes', async (req, res) => {
             return res.sendStatus(404);
         }
 
+    } else {
+        return res.sendStatus(401);
     }
 
 });

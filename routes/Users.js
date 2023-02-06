@@ -9,6 +9,7 @@ const bcrypt = require('bcrypt');
 const multer = require('multer');
 const fs = require("fs");
 const getUserData = require('./../utils/getUserData.js');
+require('dotenv').config();
 
 function allowedCharacters(str) {
     return Boolean(str.match(/^[A-Za-z0-9]*$/));
@@ -17,34 +18,42 @@ function allowedCharacters(str) {
 
 router.post('/auth/signUp', async (req, res) => {
 
-    if (!(allowedCharacters(req.body.username))) {
-        return res.status(406).json({ "error": "forbidden characters in username" });
+    if (process.env.RESTRICTED != 'true') {
+        if (!req.body.email || !req.body.username || !req.body.password) return res.sendStatus(406);
+
+        if (!(allowedCharacters(req.body.username))) {
+            return res.status(406).json({ "error": "forbidden characters in username" });
+        }
+
+        let userWithSameEmail = await User.findOne({ email: req.body.email.toLowerCase() });
+        let userWithSameUsername = await User.findOne({ username: req.body.username.toLowerCase() });
+
+        if (!(userWithSameEmail || userWithSameUsername)) {
+            const hashedPassword = await bcrypt.hash(req.body.password, 10);
+            let user = new User();
+            user.username = req.body.username.toLowerCase();
+            user.email = req.body.email.toLowerCase();
+            user.password = hashedPassword;
+
+            await user.save().then(result => {
+                return res.status(201).json({ "username": user.username, "email": user.email });
+            }).catch(err => {
+                return res.status(500).json({ "error": err });
+            });
+        }
+
+        // 406 Not Acceptable
+        if (userWithSameEmail) {
+            return res.status(406).json({ "alreadyExists": "email" });
+        }
+        if (userWithSameUsername) {
+            return res.status(406).json({ "alreadyExists": "username" });
+        }
+    } else {
+        return res.status(401).json({ "error": "account creation is currently disabled, sign in with the account/s given by the administrator." });
     }
 
-    let userWithSameEmail = await User.findOne({ email: req.body.email.toLowerCase() });
-    let userWithSameUsername = await User.findOne({ username: req.body.username.toLowerCase() });
 
-    if (!(userWithSameEmail || userWithSameUsername)) {
-        const hashedPassword = await bcrypt.hash(req.body.password, 10);
-        let user = new User();
-        user.username = req.body.username.toLowerCase();
-        user.email = req.body.email.toLowerCase();
-        user.password = hashedPassword;
-
-        await user.save().then(result => {
-            return res.status(201).json({ "username": user.username, "email": user.email });
-        }).catch(err => {
-            return res.status(500).json({ "error": err });
-        });
-    }
-
-    // 406 Not Acceptable
-    if (userWithSameEmail) {
-        return res.status(406).json({ "alreadyExists": "email" });
-    }
-    if (userWithSameUsername) {
-        return res.status(406).json({ "alreadyExists": "username" });
-    }
 });
 
 
@@ -72,7 +81,7 @@ router.patch('/auth/signIn', async (req, res) => {
 });
 
 
-router.patch('/auth/signOut', async (req, res) => {
+router.get('/auth/signOut', async (req, res) => {
     let authResult = await checkAuthenticated(req.cookies.token, req.cookies.email);
 
     if (authResult.isAuthenticated) {
@@ -153,6 +162,8 @@ router.post('/bookmarks/:postId', async (req, res) => {
         } else {
             return res.sendStatus(406);
         }
+    } else {
+        return res.sendStatus(401);
     }
 });
 
@@ -173,6 +184,8 @@ router.delete('/bookmarks/:postId', async (req, res) => {
         } else {
             return res.sendStatus(404);
         }
+    } else {
+        return res.sendStatus(401);
     }
 });
 
@@ -192,6 +205,8 @@ router.post('/follows/:userId', async (req, res) => {
         } else {
             return res.sendStatus(406);
         }
+    } else {
+        return res.sendStatus(401);
     }
 });
 
@@ -207,6 +222,8 @@ router.delete('/follows/:userId', async (req, res) => {
         } else {
             return res.sendStatus(404);
         }
+    } else {
+        return res.sendStatus(401);
     }
 });
 
