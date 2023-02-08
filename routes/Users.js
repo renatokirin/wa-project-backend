@@ -306,7 +306,7 @@ router.get('/:id', async (req, res) => {
 
     let posts = [];
 
-    const count = await Post.count({ "author.id": user._id, "removed": false });
+    const count = await Post.count(query);
 
 
     await Post.find(query).sort({ createdAt: -1 })

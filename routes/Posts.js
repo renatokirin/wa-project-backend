@@ -75,7 +75,7 @@ router.get('/', async (req, res) => {
 
     let posts = [];
 
-    const count = await Post.count({ "removed": false });
+    const count = await Post.count(query);
 
     await Post.find(query).sort({ createdAt: -1 })
         .limit(req.query.limit * 1)
