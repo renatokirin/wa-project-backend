@@ -66,11 +66,16 @@ router.patch('/auth/signIn', async (req, res) => {
 
         await user.save().then(result => {
             return res
-                .cookie("token", user.authToken, { sameSite: "none", secure: true, domain: 'blog-kfwy.onrender.com', path: '/' })
-                .cookie("email", user.email, { sameSite: "none", secure: true, domain: 'blog-kfwy.onrender.com', path: '/' })
-                .cookie("username", user.username, { sameSite: "none", secure: true, domain: 'blog-kfwy.onrender.com', path: '/' })
-                .cookie("id", user._id, { sameSite: "none", secure: true, domain: 'blog-kfwy.onrender.com', path: '/' })
-                .status(200).json({ "authenticated": true });
+                .cookie("token", user.authToken, { sameSite: "none", secure: true })
+                .cookie("email", user.email, { sameSite: "none", secure: true })
+                .cookie("username", user.username, { sameSite: "none", secure: true })
+                .cookie("id", user._id, { sameSite: "none", secure: true })
+                .status(200).json({ "authenticated": true, "cookies": {
+                    "token": user.authToken,
+                    "email": user.email,
+                    "username": user.username,
+                    "id": user._id
+                }});
         }).catch(err => {
             return res.status(500).json({ "authenticated": false, "error": err });
         });
